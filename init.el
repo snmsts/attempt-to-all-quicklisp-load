@@ -1,0 +1,10 @@
+(setq make-backup-files nil)
+(setq-default indent-tabs-mode nil)
+
+(global-set-key "\C-h" 'delete-backward-char)
+(setq inferior-lisp-program "ros -Q -L sbcl run --")
+(setq slime-autodoc-use-multiline-p t)
+(require 'paredit)
+(load (expand-file-name "~/.roswell/impls/ALL/ALL/quicklisp/slime-helper.el"))
+(add-hook 'lisp-mode-hook (lambda () (paredit-mode +1)))
+(add-hook 'lisp-interaction-mode-hook (lambda () (paredit-mode +1)))

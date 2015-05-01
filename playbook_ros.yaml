@@ -1,0 +1,146 @@
+---
+- hosts: servers
+  user: vagrant
+  vars:
+    work_dir: /home/vagrant
+    repos_dir: "{{ work_dir }}/roswell"
+    branch: release
+    sbcl_version: "1.2.10"
+  tasks:
+    - name: Install-quicklisp2
+      apt: name={{ item }} state=latest
+      with_items:
+        - libenchant-dev
+#       - libhdf5-dev
+        - qt5-qmake
+        - libqt4-dev
+        - libsmokeqtgui4-3
+        - libsmokeqt4-dev
+        - libnet1-dev
+        - libsdl-ttf2.0-dev
+        - libmagic-dev
+        - libmpg123-0
+        - freetds-dev
+        - libpapi-dev
+        - unixodbc-dev
+        - libpcap0.8-dev
+        - libsdl2-dev
+        - libsnappy-dev
+      sudo: true
+    - name: Install-quicklisp
+      apt: name={{ item }} state=latest update_cache=yes
+      with_items:
+        - libcairo2-dev
+        - libzmq3-dev
+        - libffi-dev
+        - libgsl0-dev
+        - libsdl1.2-dev
+        - libsdl-gfx1.2-dev
+        - libsdl-mixer1.2-dev
+        - libsdl-image1.2-dev
+        - libtool
+        - python-dev
+        - libgtkglext1-dev
+        - freeglut3-dev
+        - libopenal-dev
+        - libalut-dev
+        - libhdf5-dev
+        - libgtk-3-dev
+        - libdevil-dev
+        - libfam-dev
+        - libfcgi-dev
+        - firebird-dev
+        - libfuse-dev
+        - libsqlite3-dev
+        - libgeoip-dev
+#       - libglfw-dev
+        - libglfw3-dev
+        - libftgl-dev
+        - libfixposix-dev
+        - libevent-dev
+        - liblinear-dev
+        - libpuzzle-dev
+        - libsvm-dev
+        - libusb-dev
+#       - libopenmpi-dev
+        - libmysqlclient-dev
+        - libplplot-dev
+        - libportaudio-dev
+        - librabbitmq-dev
+        - r-mathlib
+        - librrd-dev
+        - librsvg2-dev
+        - libslp-dev
+        - libsoup2.4-dev
+        - libtidy-0.99-0
+        - libtokyocabinet-dev
+        - libev-dev
+        - libassimp-dev
+        - libfreeimage-dev
+        - libiodbc2-dev
+        - libpq-dev
+        - libsqlite0-dev
+      sudo: true
+    - name: Install
+      apt: name={{ item }} state=latest update_cache=yes
+      with_items:
+        - git
+        - make
+        - automake
+        - libcurl4-openssl-dev
+        - emacs24-nox
+        - paredit-el
+      sudo: true
+    - git: repo=https://github.com/libuv/libuv.git dest="{{ work_dir }}/libuv" version=v1.x accept_hostkey=yes
+    - name: "configure libuv 1"
+      command: >
+             sh autogen.sh
+             chdir="{{ work_dir }}/libuv"
+    - name: "configure libuv source 2"
+      command: >
+             ./configure
+             chdir="{{ work_dir }}/libuv"
+    - name: "make libuv"
+      command: >
+             make
+             chdir="{{ work_dir }}/libuv"
+    - name: "make install libuv"
+      command: >
+             make install
+             chdir="{{ work_dir }}/libuv"
+      sudo: true
+    - git: repo=https://github.com/snmsts/roswell.git dest={{ repos_dir }} version={{ branch }} accept_hostkey=yes
+    - name: "configure source 1"
+      command: >
+             ./bootstrap
+             chdir={{ repos_dir }}
+    - name: "configure source 2"
+      command: >
+             ./configure
+             chdir={{ repos_dir }}
+    - name: "make"
+      command: >
+             make
+             chdir={{ repos_dir }}
+    - name: "make install"
+      command: >
+             make install
+             chdir={{ repos_dir }}
+      sudo: true
+    - name: "ros setup"
+      command: ros setup
+    - name: "ros install sbcl"
+      command: ros install sbcl/{{ sbcl_version }}
+    - name: "mkdir emacs.d"
+      file: dest=~/.emacs.d/ state=directory
+    - name: "slime"
+      command: ros -s quicklisp-slime-helper -q
+    - copy: src=./init.el dest=~/.emacs.d/init.el
+
+# http://fallabs.com/kyotocabinet/pkg/kyotocabinet-1.2.76.tar.gz
+# http://llvm.org/releases/3.1/llvm-3.1.src.tar.gz
+# http://doryen.eptalys.net/data/libtcod/latest-linux64.tar.gz
+# export C_INCLUDE_PATH=$C_INCLUDE_PATH:/usr/local/include/
+# ldconfig
+
+# ansible-playbook -u vagrant -i hosts playbook_ros.yaml -k -c paramiko
