@@ -1,0 +1,33 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+
+(defun main (&rest argv)
+  (declare (ignorable argv))
+  (loop :for cnt :from 0 :to 5
+     :do 
+     (when (zerop (mod cnt 3)) 
+       (uiop/run-program:run-program "rm -rf ~/.cache/common-lisp/"))
+     (let ((list (mapcar 'ql-dist:name (ql:system-apropos-list "")))
+           (skips (mapcar (lambda (x)
+                            (substitute #\/ #\$ (file-namestring x)))
+                          (directory 
+                           (merge-pathnames 
+                            "*.*" 
+                            (ensure-directories-exist 
+                             (merge-pathnames "success/"
+                                              (make-pathname :defaults *load-pathname* :name nil :type nil))))))))
+       (setq list (sort (set-difference list skips :test 'equal) 'string<))
+       (dolist (system list)
+         (or (ignore-errors
+               (ros:roswell `(,(make-pathname :defaults *load-pathname* :name "sub" :type "ros")
+                               ,system ,cnt) t nil)
+               t)
+             (with-open-file (o (ensure-directories-exist
+                                 (merge-pathnames (format nil "failure/~A" (substitute #\$ #\/ system))
+                                                  (make-pathname :defaults *load-pathname* :name nil :type nil)))
+                                :direction :probe :if-does-not-exist :create
+                                :if-exists :supersede))))
+       list)))

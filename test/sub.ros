@@ -1,0 +1,36 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+
+(defvar *skip* nil)
+(defvar *not-yet* nil)
+(defvar *packages* nil)
+(defvar *load-required* t)
+
+(defun main (package &rest argv)
+  (declare (ignorable argv))
+  (print (list :start package))
+  (let ((path (merge-pathnames (format nil "workarounds/~A.lisp" package)
+                               (make-pathname :defaults *load-pathname* :name nil :type nil)))
+        (system (ignore-errors (ql-dist:find-system package))))
+    (when (probe-file path)
+      (load path))
+    (unless (or *skip* *not-yet*)
+      (when *load-required*
+        (dolist (i (ql-dist:required-systems system))
+          (ql:quickload i))
+        (setq *packages* (list-all-packages)))
+      (ql:quickload package))
+    (with-open-file (o (ensure-directories-exist
+                        (merge-pathnames (format nil "success/~A" (substitute #\$ #\/ package))
+                                         (make-pathname :defaults *load-pathname* :name nil :type nil)))
+                       :direction :output :if-does-not-exist :create :if-exists :supersede)
+      (print (loop :for package :in  (set-difference (list-all-packages)
+                                                     *packages*)
+                :collect (cons (package-name package)
+                               (loop :for i :being :the :external-symbols :in package
+                                  :collect (string i))))
+             o))
+    (print (list :success package))))
